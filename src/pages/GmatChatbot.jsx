@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { addMessage, getMessages, clearSessionHistory } from '@/lib/firestore';
 
 const groq = new Groq({ 
   apiKey: "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", 
@@ -23,16 +24,13 @@ const groq = new Groq({
 const GmatChatbot = () => {
   const auth = getAuth();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Hello! I\'m your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?'
-    }
-  ]);
+  const user = auth.currentUser;
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedTopic, setSelectedTopic] = useState(null);
+  const [sessionId, setSessionId] = useState('');
   const messagesEndRef = useRef(null);
 
   const quickTopics = [
@@ -41,6 +39,47 @@ const GmatChatbot = () => {
     { icon: <Timer className="w-4 h-4" />, label: 'Time Management', systemPrompt: "You are a GMAT time management expert. Focus on helping users develop effective strategies for managing time during each section and the overall test." },
     { icon: <History className="w-4 h-4" />, label: 'Practice Tests', systemPrompt: "You are a GMAT practice test expert. Focus on helping users prepare for, take, and review practice tests effectively, including analysis of their performance and improvement strategies." },
   ];
+
+  useEffect(() => {
+    if (user) {
+      const newSessionId = `${user.uid}-${selectedTopic || 'general'}`;
+      setSessionId(newSessionId);
+    }
+  }, [selectedTopic, user]);
+
+  useEffect(() => {
+    const fetchAndInitializeMessages = async () => {
+      if (!sessionId) return;
+
+      try {
+        const firestoreMessages = await getMessages(sessionId);
+        const formattedMessages = firestoreMessages.map(msg => ({
+          role: msg.sender,
+          content: msg.text
+        }));
+
+        if (firestoreMessages.length === 0) {
+          const initialContent = selectedTopic 
+            ? `I'm here to help you with ${selectedTopic}. What would you like to know?`
+            : 'Hello! I\'m your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?';
+          await addMessage(sessionId, initialContent, 'assistant');
+          const updatedMessages = await getMessages(sessionId);
+          const updatedFormatted = updatedMessages.map(msg => ({
+            role: msg.sender,
+            content: msg.text
+          }));
+          setMessages(updatedFormatted);
+        } else {
+          setMessages(formattedMessages);
+        }
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        setError('Failed to load chat history.');
+      }
+    };
+
+    fetchAndInitializeMessages();
+  }, [sessionId, selectedTopic]);
 
   const handleLogout = async () => {
     try {
@@ -60,7 +99,7 @@ const GmatChatbot = () => {
     scrollToBottom();
   }, [messages]);
 
-  const getGroqResponse = async (userMessage) => {
+  const getGroqResponse = async (currentMessages) => {
     try {
       const currentTopic = quickTopics.find(topic => topic.label === selectedTopic);
       const systemPrompt = currentTopic
@@ -73,14 +112,10 @@ const GmatChatbot = () => {
             role: "system",
             content: systemPrompt,
           },
-          ...messages.map(msg => ({
+          ...currentMessages.map(msg => ({
             role: msg.role,
             content: msg.content
-          })),
-          {
-            role: "user",
-            content: userMessage,
-          },
+          }))
         ],
         model: "llama-3.3-70b-versatile",
         temperature: 0.5,
@@ -97,12 +132,24 @@ const GmatChatbot = () => {
     setError('');
     setIsLoading(true);
     
-    const userMessage = { role: 'user', content: messageText };
-    setMessages(prev => [...prev, userMessage]);
-
     try {
-      const aiResponse = await getGroqResponse(messageText);
-      setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
+      await addMessage(sessionId, messageText, 'user');
+      const userMessages = await getMessages(sessionId);
+      const userFormatted = userMessages.map(msg => ({
+        role: msg.sender,
+        content: msg.text
+      }));
+      setMessages(userFormatted);
+
+      const aiResponse = await getGroqResponse(userFormatted);
+      await addMessage(sessionId, aiResponse, 'assistant');
+      
+      const aiMessages = await getMessages(sessionId);
+      const aiFormatted = aiMessages.map(msg => ({
+        role: msg.sender,
+        content: msg.text
+      }));
+      setMessages(aiFormatted);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -120,26 +167,31 @@ const GmatChatbot = () => {
 
   const handleQuickTopic = (topic) => {
     setSelectedTopic(topic.label);
-    // Clear chat history when changing topics
-    setMessages([{
-      role: 'assistant',
-      content: `I'm now focused on helping you with ${topic.label}. What would you like to know?`
-    }]);
   };
 
-  const handleClearChat = () => {
-    setMessages([{
-      role: 'assistant',
-      content: selectedTopic 
+  const handleClearChat = async () => {
+    try {
+      await clearSessionHistory(sessionId);
+      const initialContent = selectedTopic 
         ? `I'm here to help you with ${selectedTopic}. What would you like to know?`
-        : 'Hello! I\'m your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?'
-    }]);
+        : 'Hello! I\'m your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?';
+      await addMessage(sessionId, initialContent, 'assistant');
+      const messages = await getMessages(sessionId);
+      const formatted = messages.map(msg => ({
+        role: msg.sender,
+        content: msg.text
+      }));
+      setMessages(formatted);
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      setError('Failed to clear chat.');
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-4">
       <Card className="max-w-4xl mx-auto shadow-lg">
-      <div className="px-6 py-4 border-b bg-card flex items-center justify-between">
+        <div className="px-6 py-4 border-b bg-card flex items-center justify-between">
           <div className="flex items-center gap-4">
             <ModeToggle />
             <span className="text-sm text-muted-foreground">Switch theme</span>
@@ -252,8 +304,6 @@ const GmatChatbot = () => {
             </Button>
           </form>
         </CardContent>
-          
-
       </Card>
     </div>
   );
