@@ -1,6 +1,6 @@
 import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs, deleteDoc, doc } from "firebase/firestore";
-
 import { initializeApp } from 'firebase/app';
+
 const firebaseConfig = {
     apiKey: "AIzaSyCtG2MynZAIu366TNrJIQkulsmUVcJb7SE",
     authDomain: "gmatchatbot.firebaseapp.com",
@@ -13,52 +13,54 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const MAX_MESSAGES = 50;
+const MAX_CONVERSATIONS = 10;
 
-// Function to add a message to Firestore
-export const addMessage = async (sessionId, text, sender) => {
-    const messagesRef = collection(db, `chatSessions/${sessionId}/messages`);
-    
-    // Add message to Firestore with server timestamp
-    await addDoc(messagesRef, {
-        text,
-        sender,
-        timestamp: serverTimestamp()
-    });
+export const addConversation = async (sessionId, userMessage, aiResponse, model, email) => {
+    try {
+        if (!userMessage?.trim()) return;
+        
+        const conversationsRef = collection(db, `chatSessions/${sessionId}/conversations`);
+        await addDoc(conversationsRef, {
+            email,
+            userMessage,
+            aiResponse,
+            model,
+            timestamp: serverTimestamp()
+        });
 
-    // Check and enforce the message limit
-    await enforceMessageLimit(sessionId);
+        // await enforceConversationLimit(sessionId);
+    } catch (error) {
+        console.error('Error adding conversation:', error);
+        throw error;
+    }
 };
 
-// Function to fetch messages from Firestore
-export const getMessages = async (sessionId) => {
-    const messagesRef = collection(db, `chatSessions/${sessionId}/messages`);
-    const q = query(messagesRef, orderBy("timestamp", "desc"), limit(MAX_MESSAGES));
+export const getConversations = async (sessionId) => {
+    const conversationsRef = collection(db, `chatSessions/${sessionId}/conversations`);
+    const q = query(conversationsRef, orderBy("timestamp", "desc"), limit(MAX_CONVERSATIONS));
     const querySnapshot = await getDocs(q);
 
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
 };
 
-// Function to enforce the message limit
-const enforceMessageLimit = async (sessionId) => {
-    const messagesRef = collection(db, `chatSessions/${sessionId}/messages`);
-    const q = query(messagesRef, orderBy("timestamp"));
-    const querySnapshot = await getDocs(q);
+// const enforceConversationLimit = async (sessionId) => {
+//     const conversationsRef = collection(db, `chatSessions/${sessionId}/conversations`);
+//     const q = query(conversationsRef, orderBy("timestamp"));
+//     const querySnapshot = await getDocs(q);
     
-    if (querySnapshot.size > MAX_MESSAGES) {
-        const excessMessages = querySnapshot.docs.slice(0, querySnapshot.size - MAX_MESSAGES);
-        excessMessages.forEach(async (message) => {
-            await deleteDoc(doc(db, `chatSessions/${sessionId}/messages/${message.id}`));
-        });
-    }
-};
+//     if (querySnapshot.size > MAX_CONVERSATIONS) {
+//         const excessConversations = querySnapshot.docs.slice(0, querySnapshot.size - MAX_CONVERSATIONS);
+//         for (const conversation of excessConversations) {
+//             await deleteDoc(doc(db, `chatSessions/${sessionId}/conversations/${conversation.id}`));
+//         }
+//     }
+// };
 
-// Function to clear session history
-export const clearSessionHistory = async (sessionId) => {
-    const messagesRef = collection(db, `chatSessions/${sessionId}/messages`);
-    const querySnapshot = await getDocs(messagesRef);
+// export const clearSessionHistory = async (sessionId) => {
+//     const conversationsRef = collection(db, `chatSessions/${sessionId}/conversations`);
+//     const querySnapshot = await getDocs(conversationsRef);
     
-    querySnapshot.forEach(async (message) => {
-        await deleteDoc(doc(db, `chatSessions/${sessionId}/messages/${message.id}`));
-    });
-};
+//     for (const conversation of querySnapshot.docs) {
+//         await deleteDoc(doc(db, `chatSessions/${sessionId}/conversations/${conversation.id}`));
+//     }
+// };

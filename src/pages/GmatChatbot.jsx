@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from 'react-router-dom';
 import { Groq } from 'groq-sdk';
-import { ModeToggle } from '@/components/mode-toggle';
+// import { ModeToggle } from '@/components/mode-toggle';
 import { Send, Loader2, BookOpen, Brain, Timer, History, AlertTriangle, Trash2 } from 'lucide-react';
 import {
   Card,
@@ -14,7 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { addMessage, getMessages, clearSessionHistory } from '@/lib/firestore';
+// import { addMessage, getMessages, clearSessionHistory } from '@/lib/firestore';
+import { addConversation, getConversations } from '@/lib/firestore';
 
 const groq = new Groq({ 
   apiKey: "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", 
@@ -25,7 +26,7 @@ const GmatChatbot = () => {
   const auth = getAuth();
   const navigate = useNavigate();
   const user = auth.currentUser;
-  const [messages, setMessages] = useState([]);
+  const [conversations, setConversations] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,37 +49,28 @@ const GmatChatbot = () => {
   }, [selectedTopic, user]);
 
   useEffect(() => {
-    const fetchAndInitializeMessages = async () => {
+    const fetchConversations = async () => {
       if (!sessionId) return;
 
       try {
-        const firestoreMessages = await getMessages(sessionId);
-        const formattedMessages = firestoreMessages.map(msg => ({
-          role: msg.sender,
-          content: msg.text
-        }));
-
-        if (firestoreMessages.length === 0) {
-          const initialContent = selectedTopic 
+        const existingConversations = await getConversations(sessionId);
+        
+        if (existingConversations.length === 0) {
+          const initialMessage = selectedTopic 
             ? `I'm here to help you with ${selectedTopic}. What would you like to know?`
             : 'Hello! I\'m your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?';
-          await addMessage(sessionId, initialContent, 'assistant');
-          const updatedMessages = await getMessages(sessionId);
-          const updatedFormatted = updatedMessages.map(msg => ({
-            role: msg.sender,
-            content: msg.text
-          }));
-          setMessages(updatedFormatted);
+          
+          setConversations([{ aiResponse: initialMessage }]);
         } else {
-          setMessages(formattedMessages);
+          setConversations(existingConversations);
         }
       } catch (error) {
-        console.error('Error fetching messages:', error);
+        console.error('Error fetching conversations:', error);
         setError('Failed to load chat history.');
       }
     };
 
-    fetchAndInitializeMessages();
+    fetchConversations();
   }, [sessionId, selectedTopic]);
 
   const handleLogout = async () => {
@@ -97,14 +89,19 @@ const GmatChatbot = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [conversations]);
 
-  const getGroqResponse = async (currentMessages) => {
+  const getGroqResponse = async (messages) => {
     try {
       const currentTopic = quickTopics.find(topic => topic.label === selectedTopic);
       const systemPrompt = currentTopic
         ? currentTopic.systemPrompt
         : "You are a general GMAT preparation assistant, expert in verbal reasoning, quantitative analysis, and test-taking strategies. Provide concise, accurate, and helpful responses.";
+
+      const formattedMessages = messages.map(msg => ({
+        role: msg.userMessage ? 'user' : 'assistant',
+        content: msg.userMessage || msg.aiResponse
+      }));
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
@@ -112,10 +109,7 @@ const GmatChatbot = () => {
             role: "system",
             content: systemPrompt,
           },
-          ...currentMessages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }))
+          ...formattedMessages
         ],
         model: "llama-3.3-70b-versatile",
         temperature: 0.5,
@@ -128,34 +122,31 @@ const GmatChatbot = () => {
     }
   };
 
-  const handleMessage = async (messageText) => {
-    setError('');
-    setIsLoading(true);
-    
-    try {
-      await addMessage(sessionId, messageText, 'user');
-      const userMessages = await getMessages(sessionId);
-      const userFormatted = userMessages.map(msg => ({
-        role: msg.sender,
-        content: msg.text
-      }));
-      setMessages(userFormatted);
+const handleMessage = async (messageText) => {
+  setError('');
+  setIsLoading(true);
 
-      const aiResponse = await getGroqResponse(userFormatted);
-      await addMessage(sessionId, aiResponse, 'assistant');
-      
-      const aiMessages = await getMessages(sessionId);
-      const aiFormatted = aiMessages.map(msg => ({
-        role: msg.sender,
-        content: msg.text
-      }));
-      setMessages(aiFormatted);
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    // Get AI response for the current message
+    const aiResponse = await getGroqResponse([...conversations, { userMessage: messageText }]);
+
+    // Append the new message and AI response directly to the state
+    const newConversationEntry = {
+      userMessage: messageText,
+      aiResponse: aiResponse,
+    };
+
+    setConversations((prevConversations) => [...prevConversations, newConversationEntry]);
+
+    // Save the new message and AI response to the database in the background
+    await addConversation(sessionId, messageText, aiResponse, 'llama-3.3-70b-versatile', user.email);
+  } catch (error) {
+    console.error('Error handling message:', error);
+    setError(error.message || 'Failed to process your message. Please try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -169,19 +160,14 @@ const GmatChatbot = () => {
     setSelectedTopic(topic.label);
   };
 
-  const handleClearChat = async () => {
+  const handleClearChat = () => {
     try {
-      await clearSessionHistory(sessionId);
-      const initialContent = selectedTopic 
+      const initialMessage = selectedTopic 
         ? `I'm here to help you with ${selectedTopic}. What would you like to know?`
         : 'Hello! I\'m your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?';
-      await addMessage(sessionId, initialContent, 'assistant');
-      const messages = await getMessages(sessionId);
-      const formatted = messages.map(msg => ({
-        role: msg.sender,
-        content: msg.text
-      }));
-      setMessages(formatted);
+  
+      // Reset conversations state with the initial message
+      setConversations([{ aiResponse: initialMessage }]);
     } catch (error) {
       console.error('Error clearing chat:', error);
       setError('Failed to clear chat.');
@@ -192,14 +178,15 @@ const GmatChatbot = () => {
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-4">
       <Card className="max-w-4xl mx-auto shadow-lg">
         <div className="px-6 py-4 border-b bg-card flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          {/* <div className="flex items-center gap-4">
             <ModeToggle />
             <span className="text-sm text-muted-foreground">Switch theme</span>
-          </div>
+          </div> */}
           <Button 
             onClick={handleLogout}
             variant="destructive"
             size="sm"
+            className='bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md text-sm'
           >
             Logout
           </Button>
@@ -249,25 +236,25 @@ const GmatChatbot = () => {
 
           <div className="flex-1 min-h-[400px] max-h-[600px] overflow-y-auto rounded-lg border bg-background/50 backdrop-blur-sm">
             <div className="p-4 space-y-4">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${
-                    message.role === 'assistant' ? 'justify-start' : 'justify-end'
-                  }`}
-                >
-                  <Alert
-                    className={`max-w-[80%] shadow-sm ${
-                      message.role === 'assistant'
-                        ? 'bg-white/80'
-                        : 'bg-[#d9fdd3]/90 text-primary-foreground'
-                    }`}
-                  >
-                    <AlertDescription className="whitespace-pre-wrap">
-                      {message.content}
-                    </AlertDescription>
-                  </Alert>
-                </div>
+            {conversations.map((conversation, index) => (
+                <div key={index} className="space-y-4">
+                  {conversation.userMessage && (
+                    <div key={`user-${index}`} className="flex justify-end">
+                      <Alert className="max-w-[80%] bg-[#d9fdd3]/90 text-primary-foreground shadow-sm">
+                        <AlertDescription className="whitespace-pre-wrap">
+                          {conversation.userMessage}
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
+                  <div key={`ai-${index}`} className="flex justify-start">
+                    <Alert className="max-w-[80%] bg-white/80 shadow-sm">
+                      <AlertDescription className="whitespace-pre-wrap">
+                        {conversation.aiResponse}
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                  </div>
               ))}
               {isLoading && (
                 <div className="flex justify-start">
@@ -283,26 +270,28 @@ const GmatChatbot = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex gap-3">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about GMAT topics, study plans, or practice questions..."
-              className="flex-1 h-12 bg-background/50 backdrop-blur-sm"
-              disabled={isLoading}
-            />
-            <Button 
-              type="submit" 
-              disabled={isLoading || !input.trim()}
-              className="h-12 px-6"
-            >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
-            </Button>
-          </form>
+          <div className="p-4 bg-gray-100 rounded-xl">
+            <form onSubmit={handleSubmit} className="flex gap-4">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about GMAT topics, study plans, or practice questions..."
+                className="flex-1 h-12 bg-background/50 backdrop-blur-sm focus:outline-none focus:border-transparent"
+                disabled={isLoading}
+              />
+              <Button 
+                type="submit" 
+                disabled={isLoading || !input.trim()}
+                className="h-12 px-6"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
+            </form>
+          </div>
         </CardContent>
       </Card>
     </div>
