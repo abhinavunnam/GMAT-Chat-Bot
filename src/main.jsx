@@ -7,13 +7,13 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 // Initialize Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyCtG2MynZAIu366TNrJIQkulsmUVcJb7SE",
-    authDomain: "gmatchatbot.firebaseapp.com",
-    projectId: "gmatchatbot",
-    storageBucket: "gmatchatbot.firebasestorage.app",
-    messagingSenderId: "289644806117",
-    appId: "1:289644806117:web:5049934f44b1738d9cb90c",
-    measurementId: "G-NLR3JE9XP4"
+  apiKey: "AIzaSyC675fzeRDO8uB5rTmO0O2t1yukcVEwc64",
+  authDomain: "gmat-chat-bot.firebaseapp.com",
+  projectId: "gmat-chat-bot",
+  storageBucket: "gmat-chat-bot.appspot.app",
+  messagingSenderId: "948998349188",
+  appId: "1:948998349188:web:6e679510034664f9187dd1",
+  measurementId: "G-PJ33S0CB4F"
 };
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);

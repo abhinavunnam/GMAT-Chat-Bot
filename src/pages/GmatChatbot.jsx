@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { addConversation, getConversations } from '@/lib/firestore';
 
 const groq = new Groq({ 
-  apiKey: "", 
+  apiKey: "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", 
   dangerouslyAllowBrowser: true 
 });
 

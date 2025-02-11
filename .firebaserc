@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "gmatchatbot"
-  }
+    "default": "gmat-chat-bot",
+    "GMATchatbot": "gmat-chat-bot"
+  },
+  "targets": {},
+  "etags": {}
 }
