@@ -93,8 +93,8 @@ const LandingPage = () => {
 
           {/* Right side - Sign In */}
           <div className="text-center md:text-left order-1 md:order-2">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Your Personal GMAT AI Tutor
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-[rgb(17,9,158)]">
+            GMAT Prep Buddy
             </h1>
             <p className="text-xl text-slate-600 mb-8">
               Get instant help with GMAT prep through our advanced AI chatbot. Practice questions, receive explanations, and improve your score.

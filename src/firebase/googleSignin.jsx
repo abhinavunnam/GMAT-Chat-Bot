@@ -25,14 +25,9 @@ const FirebaseAuth = () => {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     setError(null);
-    try {
-      const isDevelopment = process.env.NODE_ENV === 'development';
-    
-      if (isDevelopment) {
-        return await signInWithPopup(auth, provider);
-      } else {
-        return await signInWithRedirect(auth, provider);
-      }
+    try {    
+      const result = await signInWithPopup(auth, provider);
+      console.log("User Signed In:", result.user);
     } catch (error) {
       setError('An error occurred during Google sign-in. Please try again.');
       console.error('Error signing in with Google:', error);

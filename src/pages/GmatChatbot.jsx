@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from 'react-router-dom';
 import { Groq } from 'groq-sdk';
+import ReactMarkdown from 'react-markdown';
+
 // import { ModeToggle } from '@/components/mode-toggle';
 import { Send, Loader2, BookOpen, Brain, Timer, History, AlertTriangle, Trash2 } from 'lucide-react';
 import {
@@ -18,7 +20,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { addConversation, getConversations } from '@/lib/firestore';
 
 const groq = new Groq({ 
-  apiKey: "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", 
+  apiKey: import.meta.env.VITE_GROQ_API_KEY, 
   dangerouslyAllowBrowser: true 
 });
 
@@ -35,11 +37,28 @@ const GmatChatbot = () => {
   const messagesEndRef = useRef(null);
 
   const quickTopics = [
-    { icon: <BookOpen className="w-4 h-4" />, label: 'Verbal Reasoning', systemPrompt: "You are a GMAT Verbal Reasoning expert. Focus on helping users with Reading Comprehension, Critical Reasoning, and Sentence Correction." },
-    { icon: <Brain className="w-4 h-4" />, label: 'Quantitative Analysis', systemPrompt: "You are a GMAT Quantitative Analysis expert. Focus on Problem Solving and Data Sufficiency questions, mathematical concepts, and calculation strategies." },
-    { icon: <Timer className="w-4 h-4" />, label: 'Time Management', systemPrompt: "You are a GMAT time management expert. Focus on helping users develop effective strategies for managing time during each section and the overall test." },
-    { icon: <History className="w-4 h-4" />, label: 'Practice Tests', systemPrompt: "You are a GMAT practice test expert. Focus on helping users prepare for, take, and review practice tests effectively, including analysis of their performance and improvement strategies." },
+    { 
+      icon: <BookOpen className="w-4 h-4" />, 
+      label: 'Verbal Reasoning', 
+      systemPrompt: "You are an AI assistant for GMAT Verbal Reasoning. Provide **only final answers**, without `<think>` responses, internal reasoning, or meta-cognitive explanations. If asked a question, respond **directly** and concisely." 
+    },
+    { 
+      icon: <Brain className="w-4 h-4" />, 
+      label: 'Quantitative Analysis', 
+      systemPrompt: "You are an AI expert in GMAT Quantitative Analysis. Respond **with direct answers only**—do not include `<think>` sections, self-analysis, or explanations of reasoning steps unless explicitly requested." 
+    },
+    { 
+      icon: <Timer className="w-4 h-4" />, 
+      label: 'Time Management', 
+      systemPrompt: "You are an AI expert in GMAT time management. Give **only practical and actionable advice**. Do not include `<think>` responses, reasoning steps, or any self-reflection—just respond concisely." 
+    },
+    // { 
+    //   icon: <History className="w-4 h-4" />, 
+    //   label: 'Practice Tests', 
+    //   systemPrompt: "You are an AI expert in GMAT practice tests. Your responses should be **direct and to the point**. Do not generate `<think>` responses, reasoning steps, or explanations of how you think—just provide relevant GMAT test advice." 
+    // },
   ];
+  
 
   useEffect(() => {
     if (user) {
@@ -48,30 +67,38 @@ const GmatChatbot = () => {
     }
   }, [selectedTopic, user]);
 
-  useEffect(() => {
-    const fetchConversations = async () => {
-      if (!sessionId) return;
+  // useEffect(() => {
+  //   const fetchConversations = async () => {
+  //     if (!sessionId) return;
 
-      try {
-        const existingConversations = await getConversations(sessionId);
+  //     try {
+  //         const existingConversations = await getConversations(sessionId);
         
-        if (existingConversations.length === 0) {
-          const initialMessage = selectedTopic 
-            ? `I'm here to help you with ${selectedTopic}. What would you like to know?`
-            : 'Hello! I\'m your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?';
+  //         if (existingConversations.length === 0) {
+  //         const initialMessage = selectedTopic 
+  //           ? `I'm here to help you with ${selectedTopic}. What would you like to know?`
+  //           : 'Hello! I\'m your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?';
           
-          setConversations([{ aiResponse: initialMessage }]);
-        } else {
-          setConversations(existingConversations);
-        }
-      } catch (error) {
-        console.error('Error fetching conversations:', error);
-        setError('Failed to load chat history.');
-      }
-    };
+  //           setConversations([{ aiResponse: initialMessage }]);
+  //         } else {
+  //           setConversations(existingConversations);
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching conversations:', error);
+  //       setError('Failed to load chat history.');
+  //     }
+  //   };
 
-    fetchConversations();
-  }, [sessionId, selectedTopic]);
+  //   fetchConversations();
+  // }, [sessionId, selectedTopic]);
+
+  useEffect(() => {
+    const initialMessage = selectedTopic 
+      ? `I'm here to help you with ${selectedTopic}. What would you like to know?`
+      : "Hello! I'm your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?";
+    
+    setConversations([{ aiResponse: initialMessage }]);
+  }, [selectedTopic]);
 
   const handleLogout = async () => {
     try {
@@ -140,7 +167,7 @@ const handleMessage = async (messageText) => {
 
     // Save the new message and AI response to the database in the background
     await addConversation(sessionId, messageText, aiResponse, 'llama-3.3-70b-versatile', user.email);
-  } catch (error) {
+    } catch (error) {
     console.error('Error handling message:', error);
     setError(error.message || 'Failed to process your message. Please try again.');
   } finally {
@@ -177,30 +204,25 @@ const handleMessage = async (messageText) => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-4">
       <Card className="max-w-4xl mx-auto shadow-lg">
-        <div className="px-6 py-4 border-b bg-card flex items-center justify-between">
-          {/* <div className="flex items-center gap-4">
-            <ModeToggle />
-            <span className="text-sm text-muted-foreground">Switch theme</span>
-          </div> */}
-          <Button 
-            onClick={handleLogout}
-            variant="destructive"
-            size="sm"
-            className='bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md text-sm'
-          >
-            Logout
-          </Button>
-        </div>
         <CardHeader className="bg-card">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="h-6 w-6 text-primary" />
               <div>
-                <CardTitle className="text-2xl">GMAT Prep Assistant</CardTitle>
+                <CardTitle className="text-2xl">GMAT Prep Buddy</CardTitle>
                 <CardDescription className="text-sm">Your AI-powered GMAT preparation guide</CardDescription>
               </div>
             </div>
-            <Button
+            <div className="flex items-center gap-4">
+              <Button
+                onClick={handleLogout}
+                variant="destructive"
+                size="sm"
+                className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md text-sm"
+              >
+                Logout
+              </Button>
+              <Button
               onClick={handleClearChat}
               variant="outline"
               size="sm"
@@ -209,9 +231,10 @@ const handleMessage = async (messageText) => {
               <Trash2 className="h-4 w-4" />
               Clear Chat
             </Button>
+            </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="p-6 flex flex-col gap-6">
           {error && (
             <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2">
@@ -220,12 +243,12 @@ const handleMessage = async (messageText) => {
             </Alert>
           )}
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {quickTopics.map((topic, index) => (
               <Button
                 key={index}
                 variant={selectedTopic === topic.label ? "default" : "outline"}
-                className="h-14 flex flex-col items-center gap-1 p-2 transition-all hover:scale-102"
+                className="h-14 flex flex-row items-center gap-1 p-2 transition-all hover:scale-102"
                 onClick={() => handleQuickTopic(topic)}
               >
                 {topic.icon}
@@ -250,7 +273,30 @@ const handleMessage = async (messageText) => {
                   <div key={`ai-${index}`} className="flex justify-start">
                     <Alert className="max-w-[80%] bg-white/80 shadow-sm">
                       <AlertDescription className="whitespace-pre-wrap">
-                        {conversation.aiResponse}
+                      <ReactMarkdown
+  components={{
+    h1: ({ node, ...props }) => <h1 className="text-3xl font-bold mt-4 mb-2" {...props} />,
+    h2: ({ node, ...props }) => <h2 className="text-2xl font-semibold mt-3 mb-1" {...props} />,
+    h3: ({ node, ...props }) => <h3 className="text-xl font-medium mt-2 mb-1" {...props} />,
+    strong: ({ node, ...props }) => <strong className="font-bold text-primary" {...props} />,
+    em: ({ node, ...props }) => <em className="italic text-gray-600" {...props} />,
+    ul: ({ node, ...props }) => <ul className="list-disc ml-5 space-y-1" {...props} />,
+    ol: ({ node, ...props }) => <ol className="list-decimal ml-5 space-y-1" {...props} />,
+    li: ({ node, ...props }) => <li className="ml-2" {...props} />,
+    blockquote: ({ node, ...props }) => (
+      <blockquote className="border-l-4 pl-4 italic text-gray-500 bg-gray-100 my-2" {...props} />
+    ),
+    hr: () => <hr className="my-4 border-t-2 border-gray-300" />,
+    table: ({ node, ...props }) => (
+      <table className="table-auto border-collapse border border-gray-300 w-full my-4" {...props} />
+    ),
+    th: ({ node, ...props }) => <th className="border border-gray-300 px-4 py-2 bg-gray-200" {...props} />,
+    td: ({ node, ...props }) => <td className="border border-gray-300 px-4 py-2" {...props} />,
+  }}
+>
+  {conversation.aiResponse}
+</ReactMarkdown>
+
                       </AlertDescription>
                     </Alert>
                   </div>
@@ -295,7 +341,7 @@ const handleMessage = async (messageText) => {
         </CardContent>
       </Card>
     </div>
-  );
+);
 };
 
 export default GmatChatbot;

@@ -7,7 +7,7 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 // Initialize Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyC675fzeRDO8uB5rTmO0O2t1yukcVEwc64",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "gmat-chat-bot.firebaseapp.com",
   projectId: "gmat-chat-bot",
   storageBucket: "gmat-chat-bot.appspot.app",
