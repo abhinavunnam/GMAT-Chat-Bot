@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
-import Dashboard from './pages/GmatChatbot';
+import Dashboard from './pages/GmatChatbot2';
 import LandingPage from './pages/LandingPage';
 
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
