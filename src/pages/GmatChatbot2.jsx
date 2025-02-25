@@ -15,6 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { addConversation, getConversations } from '@/lib/firestore';
 
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import * as fs from 'fs'; // Use `import * as fs from 'fs';`
+
 const GmatChatbot = () => {
   const auth = getAuth();
   const navigate = useNavigate();
@@ -86,38 +89,118 @@ const GmatChatbot = () => {
       const systemPrompt = currentTopic
         ? currentTopic.systemPrompt
         : "You are a general GMAT preparation assistant, expert in verbal reasoning, quantitative analysis, and test-taking strategies. Provide concise, accurate, and helpful responses.";
-
+  
       const formattedMessages = messages.map(msg => ({
-        role: msg.userMessage ? 'user' : 'assistant',
+        role: msg.userMessage ? 'user' : 'model',
         content: msg.userMessage || msg.aiResponse
       }));
-
-      // Use FormData to support file uploads along with the conversation payload
-      const formData = new FormData();
-      formData.append("system_prompt", systemPrompt);
-      formData.append("messages", JSON.stringify(formattedMessages));
+  
+      // Initialize the Gemini API client with the correct API key
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      
+      // Get the model
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      
+      // Process image file if it exists
+      let imageData = null;
       if (image) {
-        formData.append("image", image);
+        const reader = new FileReader();
+        imageData = await new Promise((resolve) => {
+          reader.onload = (e) => {
+            // Extract the base64 data without the prefix
+            const base64Data = e.target.result.split(',')[1];
+            resolve(base64Data);
+          };
+          reader.readAsDataURL(image);
+        });
       }
-
-      const response = await fetch("https://api.gemini.ai/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${import.meta.env.VITE_GEMINI_API_KEY}`
-          // Note: Do not set "Content-Type" when sending FormData
+      
+      // Create contents array for the API request
+      const contents = [];
+      
+      // Add user messages and AI responses in sequence
+      let lastUserMessage = "";
+      
+      for (const msg of messages) {
+        if (msg.userMessage) {
+          lastUserMessage = msg.userMessage;
+          contents.push({
+            role: "user",
+            parts: [{ text: msg.userMessage }]
+          });
+        } else if (msg.aiResponse) {
+          contents.push({
+            role: "model",
+            parts: [{ text: msg.aiResponse }]
+          });
+        }
+      }
+      
+      // If there's an image, add it to the last user message or create a new one
+      if (imageData) {
+        // Find the last user message in contents or create a new one
+        const lastUserMessageIndex = contents.findLastIndex(item => item.role === "user");
+        
+        if (lastUserMessageIndex !== -1) {
+          // Add image to existing last user message
+          contents[lastUserMessageIndex].parts.push({
+            inlineData: {
+              mimeType: image.type || "image/jpeg",
+              data: imageData
+            }
+          });
+        } else {
+          // Create a new user message with the image
+          contents.push({
+            role: "user",
+            parts: [
+              { text: "" },
+              {
+                inlineData: {
+                  mimeType: image.type || "image/jpeg",
+                  data: imageData
+                }
+              }
+            ]
+          });
+        }
+      }
+      
+      // Call the Gemini API
+      const result = await model.generateContent({
+        contents: contents,
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
         },
-        body: formData,
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          }
+        ]
       });
-
-      if (!response.ok) {
-        throw new Error("Gemini API request failed");
-      }
-
-      const data = await response.json();
-      return data.choices[0]?.message?.content;
+      
+      // Extract and return the response text
+      return result.response.text();
+      
     } catch (error) {
       console.error('Gemini API error:', error);
-      throw new Error('Failed to get response from Gemini AI. Please try again.');
+      throw new Error(`Failed to get response from Gemini AI: ${error.message}`);
     }
   };
 
