@@ -1,8 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import { getAuth, signOut } from "firebase/auth";
-import { useNavigate } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import { Send, Loader2, BookOpen, Brain, Timer, History, AlertTriangle, Trash2 } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import {
+  Send,
+  Loader2,
+  BookOpen,
+  Brain,
+  Timer,
+  History,
+  AlertTriangle,
+  Trash2,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -13,64 +22,67 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { addConversation, getConversations } from '@/lib/firestore';
+import { addConversation, getConversations } from "@/lib/firestore";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as fs from 'fs'; // Use `import * as fs from 'fs';`
+import * as fs from "fs"; // Use `import * as fs from 'fs';`
 
 const GmatChatbot = () => {
   const auth = getAuth();
   const navigate = useNavigate();
   const user = auth.currentUser;
   const [conversations, setConversations] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [selectedTopic, setSelectedTopic] = useState(null);
-  const [sessionId, setSessionId] = useState('');
+  const [sessionId, setSessionId] = useState("");
   const messagesEndRef = useRef(null);
 
   const quickTopics = [
-    { 
-      icon: <BookOpen className="w-4 h-4" />, 
-      label: 'Verbal Reasoning', 
-      systemPrompt: "You are an AI assistant for GMAT Verbal Reasoning. Provide **only final answers**, without `<think>` responses, internal reasoning, or meta-cognitive explanations. If asked a question, respond **directly** and concisely." 
+    {
+      icon: <BookOpen className="w-4 h-4" />,
+      label: "Verbal Reasoning",
+      systemPrompt:
+        "You are an AI assistant for GMAT Verbal Reasoning. Provide **only final answers**, without `<think>` responses, internal reasoning, or meta-cognitive explanations. If asked a question, respond **directly** and concisely.",
     },
-    { 
-      icon: <Brain className="w-4 h-4" />, 
-      label: 'Quantitative Analysis', 
-      systemPrompt: "You are an AI expert in GMAT Quantitative Analysis. Respond **with direct answers only**—do not include `<think>` sections, self-analysis, or explanations of reasoning steps unless explicitly requested." 
+    {
+      icon: <Brain className="w-4 h-4" />,
+      label: "Quantitative Analysis",
+      systemPrompt:
+        "You are an AI expert in GMAT Quantitative Analysis. Respond **with direct answers only**—do not include `<think>` sections, self-analysis, or explanations of reasoning steps unless explicitly requested.",
     },
-    { 
-      icon: <Timer className="w-4 h-4" />, 
-      label: 'Time Management', 
-      systemPrompt: "You are an AI expert in GMAT time management. Give **only practical and actionable advice**. Do not include `<think>` responses, reasoning steps, or any self-reflection—just respond concisely." 
+    {
+      icon: <Timer className="w-4 h-4" />,
+      label: "Time Management",
+      systemPrompt:
+        "You are an AI expert in GMAT time management. Give **only practical and actionable advice**. Do not include `<think>` responses, reasoning steps, or any self-reflection—just respond concisely.",
     },
   ];
 
   useEffect(() => {
     if (user) {
-      const newSessionId = `${user.uid}-${selectedTopic || 'general'}`;
+      const newSessionId = `${user.uid}-${selectedTopic || "general"}`;
       setSessionId(newSessionId);
     }
   }, [selectedTopic, user]);
 
   useEffect(() => {
-    const initialMessage = selectedTopic 
+    const initialMessage = selectedTopic
       ? `I'm here to help you with ${selectedTopic}. What would you like to know?`
       : "Hello! I'm your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?";
-    
+
     setConversations([{ aiResponse: initialMessage }]);
   }, [selectedTopic]);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.error('Logout error:', error);
-      setError('Failed to log out. Please try again.');
+      console.error("Logout error:", error);
+      setError("Failed to log out. Please try again.");
     }
   };
 
@@ -85,22 +97,24 @@ const GmatChatbot = () => {
   // NEW: Gemini AI integration (replace with actual API details)
   const getGeminiResponse = async (messages, image = null) => {
     try {
-      const currentTopic = quickTopics.find(topic => topic.label === selectedTopic);
+      const currentTopic = quickTopics.find(
+        (topic) => topic.label === selectedTopic
+      );
       const systemPrompt = currentTopic
         ? currentTopic.systemPrompt
         : "You are a general GMAT preparation assistant, expert in verbal reasoning, quantitative analysis, and test-taking strategies. Provide concise, accurate, and helpful responses.";
-  
-      const formattedMessages = messages.map(msg => ({
-        role: msg.userMessage ? 'user' : 'model',
-        content: msg.userMessage || msg.aiResponse
+
+      const formattedMessages = messages.map((msg) => ({
+        role: msg.userMessage ? "user" : "model",
+        content: msg.userMessage || msg.aiResponse,
       }));
-  
+
       // Initialize the Gemini API client with the correct API key
       const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      
+
       // Get the model
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      
+
       // Process image file if it exists
       let imageData = null;
       if (image) {
@@ -108,46 +122,51 @@ const GmatChatbot = () => {
         imageData = await new Promise((resolve) => {
           reader.onload = (e) => {
             // Extract the base64 data without the prefix
-            const base64Data = e.target.result.split(',')[1];
+            const base64Data = e.target.result.split(",")[1];
             resolve(base64Data);
           };
           reader.readAsDataURL(image);
         });
       }
-      
+
       // Create contents array for the API request
       const contents = [];
-      
+
+      // Add system prompt as the first message
+      contents.push({
+        role: "model",
+        parts: [{ text: systemPrompt }],
+      });
+
       // Add user messages and AI responses in sequence
-      let lastUserMessage = "";
-      
       for (const msg of messages) {
         if (msg.userMessage) {
-          lastUserMessage = msg.userMessage;
           contents.push({
             role: "user",
-            parts: [{ text: msg.userMessage }]
+            parts: [{ text: msg.userMessage }],
           });
         } else if (msg.aiResponse) {
           contents.push({
             role: "model",
-            parts: [{ text: msg.aiResponse }]
+            parts: [{ text: msg.aiResponse }],
           });
         }
       }
-      
+
       // If there's an image, add it to the last user message or create a new one
       if (imageData) {
         // Find the last user message in contents or create a new one
-        const lastUserMessageIndex = contents.findLastIndex(item => item.role === "user");
-        
+        const lastUserMessageIndex = contents.findLastIndex(
+          (item) => item.role === "user"
+        );
+
         if (lastUserMessageIndex !== -1) {
           // Add image to existing last user message
           contents[lastUserMessageIndex].parts.push({
             inlineData: {
               mimeType: image.type || "image/jpeg",
-              data: imageData
-            }
+              data: imageData,
+            },
           });
         } else {
           // Create a new user message with the image
@@ -158,14 +177,14 @@ const GmatChatbot = () => {
               {
                 inlineData: {
                   mimeType: image.type || "image/jpeg",
-                  data: imageData
-                }
-              }
-            ]
+                  data: imageData,
+                },
+              },
+            ],
           });
         }
       }
-      
+
       // Call the Gemini API
       const result = await model.generateContent({
         contents: contents,
@@ -178,34 +197,35 @@ const GmatChatbot = () => {
         safetySettings: [
           {
             category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            threshold: "BLOCK_MEDIUM_AND_ABOVE",
           },
           {
             category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            threshold: "BLOCK_MEDIUM_AND_ABOVE",
           },
           {
             category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            threshold: "BLOCK_MEDIUM_AND_ABOVE",
           },
           {
             category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          }
-        ]
+            threshold: "BLOCK_MEDIUM_AND_ABOVE",
+          },
+        ],
       });
-      
+
       // Extract and return the response text
       return result.response.text();
-      
     } catch (error) {
-      console.error('Gemini API error:', error);
-      throw new Error(`Failed to get response from Gemini AI: ${error.message}`);
+      console.error("Gemini API error:", error);
+      throw new Error(
+        `Failed to get response from Gemini AI: ${error.message}`
+      );
     }
   };
 
   const handleMessage = async (messageText) => {
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
@@ -224,10 +244,18 @@ const GmatChatbot = () => {
       setConversations((prev) => [...prev, newConversationEntry]);
 
       // Save to the database (update as needed for Gemini)
-      await addConversation(sessionId, messageText, aiResponse, 'gemini-ai', user.email);
+      await addConversation(
+        sessionId,
+        messageText,
+        aiResponse,
+        "gemini-ai",
+        user.email
+      );
     } catch (error) {
-      console.error('Error handling message:', error);
-      setError(error.message || 'Failed to process your message. Please try again.');
+      console.error("Error handling message:", error);
+      setError(
+        error.message || "Failed to process your message. Please try again."
+      );
     } finally {
       setIsLoading(false);
       // Clear image input after submission
@@ -238,9 +266,9 @@ const GmatChatbot = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim() && !imageFile) return;
-    
+
     handleMessage(input);
-    setInput('');
+    setInput("");
   };
 
   const handleQuickTopic = (topic) => {
@@ -249,14 +277,14 @@ const GmatChatbot = () => {
 
   const handleClearChat = () => {
     try {
-      const initialMessage = selectedTopic 
+      const initialMessage = selectedTopic
         ? `I'm here to help you with ${selectedTopic}. What would you like to know?`
         : "Hello! I'm your GMAT prep assistant. I can help you with study plans, specific topics, or practice questions. What would you like to focus on today?";
-  
+
       setConversations([{ aiResponse: initialMessage }]);
     } catch (error) {
-      console.error('Error clearing chat:', error);
-      setError('Failed to clear chat.');
+      console.error("Error clearing chat:", error);
+      setError("Failed to clear chat.");
     }
   };
 
@@ -269,7 +297,9 @@ const GmatChatbot = () => {
               <Brain className="h-6 w-6 text-primary" />
               <div>
                 <CardTitle className="text-2xl">GMAT Prep Buddy</CardTitle>
-                <CardDescription className="text-sm">Your AI-powered GMAT preparation guide</CardDescription>
+                <CardDescription className="text-sm">
+                  Your AI-powered GMAT preparation guide
+                </CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -296,12 +326,15 @@ const GmatChatbot = () => {
 
         <CardContent className="p-6 flex flex-col gap-6">
           {error && (
-            <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2">
+            <Alert
+              variant="destructive"
+              className="animate-in fade-in slide-in-from-top-2"
+            >
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {quickTopics.map((topic, index) => (
               <Button
@@ -334,23 +367,75 @@ const GmatChatbot = () => {
                       <AlertDescription className="whitespace-pre-wrap">
                         <ReactMarkdown
                           components={{
-                            h1: ({ node, ...props }) => <h1 className="text-3xl font-bold mt-4 mb-2" {...props} />,
-                            h2: ({ node, ...props }) => <h2 className="text-2xl font-semibold mt-3 mb-1" {...props} />,
-                            h3: ({ node, ...props }) => <h3 className="text-xl font-medium mt-2 mb-1" {...props} />,
-                            strong: ({ node, ...props }) => <strong className="font-bold text-primary" {...props} />,
-                            em: ({ node, ...props }) => <em className="italic text-gray-600" {...props} />,
-                            ul: ({ node, ...props }) => <ul className="list-disc ml-5 space-y-1" {...props} />,
-                            ol: ({ node, ...props }) => <ol className="list-decimal ml-5 space-y-1" {...props} />,
-                            li: ({ node, ...props }) => <li className="ml-2" {...props} />,
+                            h1: ({ node, ...props }) => (
+                              <h1
+                                className="text-3xl font-bold mt-4 mb-2"
+                                {...props}
+                              />
+                            ),
+                            h2: ({ node, ...props }) => (
+                              <h2
+                                className="text-2xl font-semibold mt-3 mb-1"
+                                {...props}
+                              />
+                            ),
+                            h3: ({ node, ...props }) => (
+                              <h3
+                                className="text-xl font-medium mt-2 mb-1"
+                                {...props}
+                              />
+                            ),
+                            strong: ({ node, ...props }) => (
+                              <strong
+                                className="font-bold text-primary"
+                                {...props}
+                              />
+                            ),
+                            em: ({ node, ...props }) => (
+                              <em className="italic text-gray-600" {...props} />
+                            ),
+                            ul: ({ node, ...props }) => (
+                              <ul
+                                className="list-disc ml-5 space-y-1"
+                                {...props}
+                              />
+                            ),
+                            ol: ({ node, ...props }) => (
+                              <ol
+                                className="list-decimal ml-5 space-y-1"
+                                {...props}
+                              />
+                            ),
+                            li: ({ node, ...props }) => (
+                              <li className="ml-2" {...props} />
+                            ),
                             blockquote: ({ node, ...props }) => (
-                              <blockquote className="border-l-4 pl-4 italic text-gray-500 bg-gray-100 my-2" {...props} />
+                              <blockquote
+                                className="border-l-4 pl-4 italic text-gray-500 bg-gray-100 my-2"
+                                {...props}
+                              />
                             ),
-                            hr: () => <hr className="my-4 border-t-2 border-gray-300" />,
+                            hr: () => (
+                              <hr className="my-4 border-t-2 border-gray-300" />
+                            ),
                             table: ({ node, ...props }) => (
-                              <table className="table-auto border-collapse border border-gray-300 w-full my-4" {...props} />
+                              <table
+                                className="table-auto border-collapse border border-gray-300 w-full my-4"
+                                {...props}
+                              />
                             ),
-                            th: ({ node, ...props }) => <th className="border border-gray-300 px-4 py-2 bg-gray-200" {...props} />,
-                            td: ({ node, ...props }) => <td className="border border-gray-300 px-4 py-2" {...props} />,
+                            th: ({ node, ...props }) => (
+                              <th
+                                className="border border-gray-300 px-4 py-2 bg-gray-200"
+                                {...props}
+                              />
+                            ),
+                            td: ({ node, ...props }) => (
+                              <td
+                                className="border border-gray-300 px-4 py-2"
+                                {...props}
+                              />
+                            ),
                           }}
                         >
                           {conversation.aiResponse}
@@ -393,8 +478,8 @@ const GmatChatbot = () => {
                 className="flex-1 h-12 bg-background/50 backdrop-blur-sm focus:outline-none focus:border-transparent"
                 disabled={isLoading}
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isLoading || (!input.trim() && !imageFile)}
                 className="h-12 px-6"
               >
