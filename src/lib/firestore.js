@@ -42,25 +42,3 @@ export const getConversations = async (sessionId) => {
 
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
 };
-
-// const enforceConversationLimit = async (sessionId) => {
-//     const conversationsRef = collection(db, `chatSessions/${sessionId}/conversations`);
-//     const q = query(conversationsRef, orderBy("timestamp"));
-//     const querySnapshot = await getDocs(q);
-    
-//     if (querySnapshot.size > MAX_CONVERSATIONS) {
-//         const excessConversations = querySnapshot.docs.slice(0, querySnapshot.size - MAX_CONVERSATIONS);
-//         for (const conversation of excessConversations) {
-//             await deleteDoc(doc(db, `chatSessions/${sessionId}/conversations/${conversation.id}`));
-//         }
-//     }
-// };
-
-// export const clearSessionHistory = async (sessionId) => {
-//     const conversationsRef = collection(db, `chatSessions/${sessionId}/conversations`);
-//     const querySnapshot = await getDocs(conversationsRef);
-    
-//     for (const conversation of querySnapshot.docs) {
-//         await deleteDoc(doc(db, `chatSessions/${sessionId}/conversations/${conversation.id}`));
-//     }
-// };

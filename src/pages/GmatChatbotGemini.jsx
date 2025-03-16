@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
+//import { getGeminiResponse } from "../lib/gemini";
 import {
   Send,
   Loader2,
