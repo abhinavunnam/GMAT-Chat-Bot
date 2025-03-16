@@ -294,7 +294,7 @@ const GmatChatbot = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-4">
       <Card className="max-w-4xl mx-auto shadow-lg">
-        <CardHeader className="bg-card">
+        <CardHeader className="text-[#11079d] bg-card">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="h-6 w-6 text-primary" />
