@@ -42,20 +42,23 @@ const GmatChatbot = () => {
 
   const quickTopics = [
     {
-      icon: <BookOpen className="w-4 h-4" />,
+      icon: <BookOpen className="w-4 h-4 text-[white]" />,
       label: "Verbal Reasoning",
+      labelClass: "text-[white] font-medium",
       systemPrompt:
         "You are an AI assistant for GMAT Verbal Reasoning. Provide **only final answers**, without `<think>` responses, internal reasoning, or meta-cognitive explanations. If asked a question, respond **directly** and concisely.",
     },
     {
-      icon: <Brain className="w-4 h-4" />,
+      icon: <Brain className="w-4 h-4 text-[white]" />,
       label: "Quantitative Analysis",
+      labelClass: "text-[white] font-medium",
       systemPrompt:
         "You are an AI expert in GMAT Quantitative Analysis. Respond **with direct answers only**—do not include `<think>` sections, self-analysis, or explanations of reasoning steps unless explicitly requested.",
     },
     {
-      icon: <Timer className="w-4 h-4" />,
+      icon: <Timer className="w-4 h-4 text-[white]" />,
       label: "Time Management",
+      labelClass: "text-[white] font-medium",
       systemPrompt:
         "You are an AI expert in GMAT time management. Give **only practical and actionable advice**. Do not include `<think>` responses, reasoning steps, or any self-reflection—just respond concisely.",
     },
@@ -296,9 +299,9 @@ const GmatChatbot = () => {
             <div className="flex items-center gap-2">
               <Brain className="h-6 w-6 text-primary" />
               <div>
-                <CardTitle className="text-2xl">GMAT Prep Buddy</CardTitle>
+                <h1 className="text-[#11079d] font-bold text-2xl">GMAT Prep Buddy</h1>
                 <CardDescription className="text-sm">
-                  Your AI-powered GMAT preparation guide
+                  Your AI-powered GMAT Preparation Guide
                 </CardDescription>
               </div>
             </div>
@@ -307,7 +310,7 @@ const GmatChatbot = () => {
                 onClick={handleLogout}
                 variant="destructive"
                 size="sm"
-                className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md text-sm"
+                className="bg-[#f8511a] hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md text-sm"
               >
                 Logout
               </Button>
@@ -315,7 +318,7 @@ const GmatChatbot = () => {
                 onClick={handleClearChat}
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-[#f8511a] text-white"
               >
                 <Trash2 className="h-4 w-4" />
                 Clear Chat
@@ -340,11 +343,15 @@ const GmatChatbot = () => {
               <Button
                 key={index}
                 variant={selectedTopic === topic.label ? "default" : "outline"}
-                className="h-14 flex flex-row items-center gap-1 p-2 transition-all hover:scale-102"
+                className={`h-14 flex flex-row items-center gap-1 p-2 transition-all hover:scale-102 
+                  ${selectedTopic === topic.label 
+                    ? 'bg-[#11079d] text-white' 
+                    : 'bg-[#11079d] text-white hover:bg-[#11079d]/80'
+                  }`}
                 onClick={() => handleQuickTopic(topic)}
               >
                 {topic.icon}
-                <span className="text-xs font-medium">{topic.label}</span>
+                <span className="font-medium">{topic.label}</span>
               </Button>
             ))}
           </div>
@@ -461,8 +468,8 @@ const GmatChatbot = () => {
 
           {/* New: File input for image prompts */}
           <div className="p-4 bg-gray-100 rounded-xl">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Attach an image (optional)
+            <label className="block text-sm font-medium text-[#11079d] mb-1">
+              Attach An Image (Optional)
             </label>
             <input
               type="file"
@@ -481,7 +488,7 @@ const GmatChatbot = () => {
               <Button
                 type="submit"
                 disabled={isLoading || (!input.trim() && !imageFile)}
-                className="h-12 px-6"
+                className="h-12 px-6 bg-[#f8511a] text-white"
               >
                 {isLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
