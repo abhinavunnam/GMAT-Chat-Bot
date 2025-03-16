@@ -28,17 +28,17 @@ const LandingPage = () => {
   
     const chatFeatures = [
       {
-        icon: <Brain className="w-6 h-6 text-purple-500" />,
+        icon: <Brain className="w-6 h-6 text-[#11079d]" />,
         title: "AI-Powered GMAT Tutor",
         description: "Get instant, personalized help with any GMAT topic 24/7"
       },
       {
-        icon: <MessageSquare className="w-6 h-6 text-blue-500" />,
+        icon: <MessageSquare className="w-6 h-6 text-[#11079d]" />,
         title: "Interactive Practice",
         description: "Solve problems with step-by-step guidance and explanations"
       },
       {
-        icon: <Sparkles className="w-6 h-6 text-amber-500" />,
+        icon: <Sparkles className="w-6 h-6 text-[#f8511a]" />,
         title: "Adaptive Learning",
         description: "Experience personalized tutoring that adapts to your level"
       }
@@ -56,7 +56,7 @@ const LandingPage = () => {
               {/* AI Message */}
               <div className="flex gap-3 mb-4">
                 <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-purple-600" />
+                  <Brain className="w-5 h-5 text-[#11079d]" />
                 </div>
                 <div className="bg-white p-3 rounded-xl shadow-sm max-w-sm">
                   <p className="text-slate-700">Hi! I'm your GMAT AI Tutor. I can help you with any GMAT topic, create study plans, and provide practice questions. What would you like to learn today?</p>
@@ -80,11 +80,11 @@ const LandingPage = () => {
                 <input
                   type="text"
                   placeholder="Try asking a GMAT question..."
-                  className="flex-1 p-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="flex-1 p-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#11079d]"
                   value={demoMessage}
                   onChange={(e) => setDemoMessage(e.target.value)}
                 />
-                <button className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <button className="p-2 bg-[#f8511a] text-white rounded-lg hover:bg-[#f8511a]">
                   <Send className="w-5 h-5" />
                 </button>
               </div>
@@ -93,7 +93,7 @@ const LandingPage = () => {
 
           {/* Right side - Sign In */}
           <div className="text-center md:text-left order-1 md:order-2">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-[rgb(17,9,158)]">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-[#11079d]">
             GMAT Prep Buddy
             </h1>
             <p className="text-xl text-slate-600 mb-8">
@@ -103,7 +103,7 @@ const LandingPage = () => {
               <div className="inline-block">
                 <GoogleSignIn />
               </div>
-              <p className="text-sm text-slate-500">Join thousands of students already improving their GMAT scores with AI</p>
+              <p className="text-sm text-slate-500">Self Prepare for GMAT without spending thousands on GMAT coaching!</p>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ const LandingPage = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 py-12">
+      <div className="bg-gradient-to-r from-[#f8511a] to-[#11079d] py-12">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center text-white max-w-4xl mx-auto">
             <div>
@@ -131,11 +131,11 @@ const LandingPage = () => {
               <div className="text-purple-100">Available Support</div>
             </div>
             <div>
-              <div className="text-3xl font-bold mb-1">1M+</div>
+              <div className="text-3xl font-bold mb-1">1000+</div>
               <div className="text-purple-100">Questions Answered</div>
             </div>
             <div>
-              <div className="text-3xl font-bold mb-1">95%</div>
+              <div className="text-3xl font-bold mb-1">High</div>
               <div className="text-purple-100">Student Satisfaction</div>
             </div>
           </div>
