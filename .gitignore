@@ -12,8 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Ignore Build outputs
+/dist/
+/build/
+coverage/
+
 # Ignore environment variables
 .env
+
+# Firebase
+.firebase/
+*.firebase
+firebase-debug.log*
 
 # Editor directories and files
 .vscode/*

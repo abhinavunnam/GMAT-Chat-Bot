@@ -97,7 +97,7 @@ const LandingPage = () => {
             GMAT Prep Buddy
             </h1>
             <p className="text-xl text-slate-600 mb-8">
-              Get instant help with GMAT prep through our advanced AI chatbot. Practice questions, receive explanations, and improve your score.
+              Get instant help with GMAT prep through our GMAT trained Bot. Practice questions, receive explanations, and score 700+.
             </p>
             <div className="space-y-4">
               <div className="inline-block">
