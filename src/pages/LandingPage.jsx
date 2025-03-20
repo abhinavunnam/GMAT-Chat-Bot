@@ -76,17 +76,15 @@ const LandingPage = () => {
               </div>
 
               {/* Demo Input */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Try asking a GMAT question..."
-                  className="flex-1 p-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#11079d]"
-                  value={demoMessage}
-                  onChange={(e) => setDemoMessage(e.target.value)}
-                />
-                <button className="p-2 bg-[#f8511a] text-white rounded-lg hover:bg-[#f8511a]">
+              <div className="flex gap-2 pointer-events-none">
+                <div
+                  className="flex-1 p-2 rounded-lg border border-slate-200 text-slate-400 bg-white"
+                >
+                  Try asking a GMAT question...
+                </div>
+                <div className="p-2 bg-[#f8511a] text-white rounded-lg opacity-90">
                   <Send className="w-5 h-5" />
-                </button>
+                </div>
               </div>
             </div>
           </div>
