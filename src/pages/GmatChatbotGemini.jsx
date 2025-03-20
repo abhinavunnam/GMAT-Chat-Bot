@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-//import { getGeminiResponse } from "../lib/gemini";
+import { getGeminiResponse } from "../lib/gemini";
 import {
   Send,
   Loader2,
@@ -24,9 +24,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { addConversation, getConversations } from "@/lib/firestore";
-
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as fs from "fs"; // Use `import * as fs from 'fs';`
 
 const GmatChatbot = () => {
   const auth = getAuth();
@@ -98,9 +95,12 @@ const GmatChatbot = () => {
     scrollToBottom();
   }, [conversations]);
 
-  // NEW: Gemini AI integration (replace with actual API details)
-  const getGeminiResponse = async (messages, image = null) => {
+  const handleMessage = async (messageText) => {
+    setError("");
+    setIsLoading(true);
+
     try {
+      // Find the current topic's system prompt
       const currentTopic = quickTopics.find(
         (topic) => topic.label === selectedTopic
       );
@@ -108,135 +108,11 @@ const GmatChatbot = () => {
         ? currentTopic.systemPrompt
         : "You are a general GMAT preparation assistant, expert in verbal reasoning, quantitative analysis, and test-taking strategies. Provide concise, accurate, and helpful responses.";
 
-      const formattedMessages = messages.map((msg) => ({
-        role: msg.userMessage ? "user" : "model",
-        content: msg.userMessage || msg.aiResponse,
-      }));
-
-      // Initialize the Gemini API client with the correct API key
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-
-      // Get the model
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-      // Process image file if it exists
-      let imageData = null;
-      if (image) {
-        const reader = new FileReader();
-        imageData = await new Promise((resolve) => {
-          reader.onload = (e) => {
-            // Extract the base64 data without the prefix
-            const base64Data = e.target.result.split(",")[1];
-            resolve(base64Data);
-          };
-          reader.readAsDataURL(image);
-        });
-      }
-
-      // Create contents array for the API request
-      const contents = [];
-
-      // Add system prompt as the first message
-      contents.push({
-        role: "model",
-        parts: [{ text: systemPrompt }],
-      });
-
-      // Add user messages and AI responses in sequence
-      for (const msg of messages) {
-        if (msg.userMessage) {
-          contents.push({
-            role: "user",
-            parts: [{ text: msg.userMessage }],
-          });
-        } else if (msg.aiResponse) {
-          contents.push({
-            role: "model",
-            parts: [{ text: msg.aiResponse }],
-          });
-        }
-      }
-
-      // If there's an image, add it to the last user message or create a new one
-      if (imageData) {
-        // Find the last user message in contents or create a new one
-        const lastUserMessageIndex = contents.findLastIndex(
-          (item) => item.role === "user"
-        );
-
-        if (lastUserMessageIndex !== -1) {
-          // Add image to existing last user message
-          contents[lastUserMessageIndex].parts.push({
-            inlineData: {
-              mimeType: image.type || "image/jpeg",
-              data: imageData,
-            },
-          });
-        } else {
-          // Create a new user message with the image
-          contents.push({
-            role: "user",
-            parts: [
-              { text: "" },
-              {
-                inlineData: {
-                  mimeType: image.type || "image/jpeg",
-                  data: imageData,
-                },
-              },
-            ],
-          });
-        }
-      }
-
-      // Call the Gemini API
-      const result = await model.generateContent({
-        contents: contents,
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE",
-          },
-        ],
-      });
-
-      // Extract and return the response text
-      return result.response.text();
-    } catch (error) {
-      console.error("Gemini API error:", error);
-      throw new Error(
-        `Failed to get response from Gemini AI: ${error.message}`
-      );
-    }
-  };
-
-  const handleMessage = async (messageText) => {
-    setError("");
-    setIsLoading(true);
-
-    try {
-      // Call Gemini with both text and (optionally) the image file.
+      // Call Gemini with text, image file, and system prompt
       const aiResponse = await getGeminiResponse(
         [...conversations, { userMessage: messageText }],
-        imageFile
+        imageFile,
+        systemPrompt
       );
 
       // Append the new conversation entry
@@ -247,7 +123,7 @@ const GmatChatbot = () => {
 
       setConversations((prev) => [...prev, newConversationEntry]);
 
-      // Save to the database (update as needed for Gemini)
+      // Save to the database
       await addConversation(
         sessionId,
         messageText,
@@ -467,7 +343,7 @@ const GmatChatbot = () => {
             </div>
           </div>
 
-          {/* New: File input for image prompts */}
+          {/* File input for image prompts */}
           <div className="p-4 bg-gray-100 rounded-xl">
             <label className="block text-sm font-medium text-[#11079d] mb-1">
               Attach An Image (Optional)
